@@ -137,3 +137,144 @@ test('supports specifying relationship info', () => {
         { author_id: 456, id: 2, title: 'Sic Dolor amet', views: 65 },
     ]);
 });
+
+const manyToManyData = {
+    posts: [
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ],
+    users: [
+        {
+            id: 123,
+            name: 'John Doe',
+        },
+        {
+            id: 456,
+            name: 'Jane Doe',
+        },
+    ],
+};
+
+const manyToManyConfig = {
+    posts: {
+        fan_ids: {
+            ref: 'users',
+            field: 'Fans',
+            foreignField: 'Favorited',
+        },
+    },
+};
+
+test('provides many to many resolvers', () => {
+    const { Users } = entity('posts', manyToManyData, manyToManyConfig);
+    expect(Users(manyToManyData.posts[0])).toEqual([
+        { id: 123, name: 'John Doe' },
+        { id: 456, name: 'Jane Doe' },
+    ]);
+    expect(Users(manyToManyData.posts[0], { filter: { q: 'jane' } })).toEqual([
+        { id: 456, name: 'Jane Doe' },
+    ]);
+    expect(Users(manyToManyData.posts[1])).toEqual([
+        { id: 456, name: 'Jane Doe' },
+    ]);
+
+    const { Posts } = entity('users', manyToManyData, manyToManyConfig);
+    expect(Posts(manyToManyData.users[0])).toEqual([
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+    ]);
+    expect(Posts(manyToManyData.users[1])).toEqual([
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ]);
+    expect(Posts(manyToManyData.users[1], { filter: { q: 'ipsum' } })).toEqual([
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+    ]);
+});
+
+test('provides many to many resolvers with config', () => {
+    const { Fans } = entity('posts', manyToManyData, manyToManyConfig);
+    expect(Fans(manyToManyData.posts[0])).toEqual([
+        { id: 123, name: 'John Doe' },
+    ]);
+    expect(Fans(manyToManyData.posts[1])).toEqual([
+        { id: 123, name: 'John Doe' },
+        { id: 456, name: 'Jane Doe' },
+    ]);
+    expect(Fans(manyToManyData.posts[1], { filter: { q: 'jane' } })).toEqual([
+        { id: 456, name: 'Jane Doe' },
+    ]);
+
+    const { Favorited } = entity('users', manyToManyData, manyToManyConfig);
+    expect(Favorited(manyToManyData.users[0])).toEqual([
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ]);
+    expect(
+        Favorited(manyToManyData.users[0], { filter: { q: 'ipsum' } })
+    ).toEqual([
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+    ]);
+    expect(Favorited(manyToManyData.users[1])).toEqual([
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ]);
+});

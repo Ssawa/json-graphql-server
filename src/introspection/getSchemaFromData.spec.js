@@ -347,3 +347,81 @@ test('Allows setting relationship overrides', () => {
         typeMap['User'].getFields()['AuthoredPosts'].type.ofType.name
     ).toEqual('Post');
 });
+
+const manyToManyData = {
+    posts: [
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ],
+    users: [
+        {
+            id: 123,
+            name: 'John Doe',
+        },
+        {
+            id: 456,
+            name: 'Jane Doe',
+        },
+    ],
+};
+
+const manyToManyConfig = {
+    relationships: {
+        posts: {
+            fan_ids: {
+                ref: 'users',
+                field: 'Fans',
+                foreignField: 'Favorited',
+            },
+        },
+    },
+};
+
+const manyToManyTypeMap = getSchemaFromData(
+    manyToManyData,
+    manyToManyConfig
+).getTypeMap();
+
+test('creates Many-To-Many relationships', () => {
+    expect(Object.keys(manyToManyTypeMap['Post'].getFields())).toContain(
+        'Users'
+    );
+    const [userArg] = manyToManyTypeMap['Post'].getFields()['Users'].args;
+    expect(userArg.name).toEqual('filter');
+    expect(userArg.type.name).toEqual('UserFilter');
+
+    expect(Object.keys(manyToManyTypeMap['User'].getFields())).toContain(
+        'Posts'
+    );
+    const [postArg] = manyToManyTypeMap['User'].getFields()['Posts'].args;
+    expect(postArg.name).toEqual('filter');
+    expect(postArg.type.name).toEqual('PostFilter');
+});
+
+test('creates Many-To-Many relationships with config overrides', () => {
+    expect(Object.keys(manyToManyTypeMap['Post'].getFields())).toContain(
+        'Fans'
+    );
+    const [userArg] = manyToManyTypeMap['Post'].getFields()['Fans'].args;
+    expect(userArg.name).toEqual('filter');
+    expect(userArg.type.name).toEqual('UserFilter');
+
+    expect(Object.keys(manyToManyTypeMap['User'].getFields())).toContain(
+        'Favorited'
+    );
+    const [postArg] = manyToManyTypeMap['User'].getFields()['Favorited'].args;
+    expect(postArg.name).toEqual('filter');
+    expect(postArg.type.name).toEqual('PostFilter');
+});

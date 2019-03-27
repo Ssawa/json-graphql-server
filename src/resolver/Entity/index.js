@@ -3,7 +3,11 @@ import {
     getRelationshipFromKey,
     getReverseRelatedField,
 } from '../../nameConverter';
-import { isRelationshipField, getRelationshipInfo } from '../../relationships';
+import {
+    isRelationshipField,
+    isManyToManyRelationshipField,
+    getRelationshipInfo,
+} from '../../relationships';
 import applyFilters from '../Query/applyFilters';
 
 /**
@@ -68,21 +72,52 @@ export default (entityName, data, relationships = {}) => {
             });
         }, {});
 
-    const makeOneToManyResolver = (key, fieldName) => (
-        entity,
-        { filter } = {}
-    ) =>
-        applyFilters(
-            data[key].filter(record => record[fieldName] == entity.id),
-            filter
-        );
+    // Make ManyToMany resolvers that are defined directly
+    // on this entity
+    let manyToManyResolvers = entityFields
+        .filter(isManyToManyRelationshipField)
+        .reduce((resolvers, fieldName) => {
+            const relationship = getRelationshipInfo(
+                entityName,
+                fieldName,
+                relationships,
+                true
+            );
+            return Object.assign({}, resolvers, {
+                [relationship.field]: (entity, { filter } = {}) =>
+                    applyFilters(
+                        data[relationship.ref].filter(relatedRecord =>
+                            entity[fieldName].includes(relatedRecord.id)
+                        ),
+                        filter
+                    ),
+            });
+        }, {});
+
+    function makeOneToManyResolver(key, fieldName) {
+        return (entity, { filter } = {}) =>
+            applyFilters(
+                data[key].filter(record => record[fieldName] == entity.id),
+                filter
+            );
+    }
+
+    function makeManyToManyResolver(key, fieldName) {
+        return (entity, { filter } = {}) =>
+            applyFilters(
+                data[key].filter(record =>
+                    record[fieldName].includes(entity.id)
+                ),
+                filter
+            );
+    }
 
     // Generate oneToMany resolvers based on field name
     const relatedField = getReverseRelatedField(entityName); // 'posts' => 'post_id'
     const hasReverseRelationship = entityName =>
         getFieldsFromEntities(data[entityName]).hasOwnProperty(relatedField);
     const entities = Object.keys(data);
-    let oneToManyResolvers = entities.filter(hasReverseRelationship).reduce(
+    const oneToManyResolvers = entities.filter(hasReverseRelationship).reduce(
         (resolvers, entityName) =>
             Object.assign({}, resolvers, {
                 [getRelationshipFromKey(entityName)]: makeOneToManyResolver(
@@ -93,21 +128,55 @@ export default (entityName, data, relationships = {}) => {
         {}
     );
 
-    // Generate oneToMany resolvers from the relationships config
+    // Generate ManyToMany resolvers based on field name
+    const manyToManyrelatedField = `${relatedField}s`; // 'posts' => 'post_ids'
+    const hasReverseManyToManyRelationship = entityName =>
+        getFieldsFromEntities(data[entityName]).hasOwnProperty(
+            manyToManyrelatedField
+        );
+    manyToManyResolvers = entities
+        .filter(hasReverseManyToManyRelationship)
+        .reduce(
+            (resolvers, entityName) =>
+                Object.assign({}, resolvers, {
+                    [getRelationshipFromKey(
+                        entityName
+                    )]: makeManyToManyResolver(
+                        entityName,
+                        manyToManyrelatedField
+                    ),
+                }),
+            manyToManyResolvers
+        );
+
+    // Generate resolvers from the relationships config
     Object.keys(relationships).forEach(key => {
         Object.keys(relationships[key]).forEach(fieldName => {
             if (relationships[key][fieldName].ref === entityName) {
+                const many = isManyToManyRelationshipField(fieldName);
                 const relationship = getRelationshipInfo(
                     key,
                     fieldName,
-                    relationships
+                    relationships,
+                    many
                 );
-                oneToManyResolvers[
-                    relationship.foreignField
-                ] = makeOneToManyResolver(key, fieldName);
+                if (many) {
+                    manyToManyResolvers[
+                        relationship.foreignField
+                    ] = makeManyToManyResolver(key, fieldName);
+                } else {
+                    oneToManyResolvers[
+                        relationship.foreignField
+                    ] = makeOneToManyResolver(key, fieldName);
+                }
             }
         });
     });
 
-    return Object.assign({}, manyToOneResolvers, oneToManyResolvers);
+    return Object.assign(
+        {},
+        manyToOneResolvers,
+        oneToManyResolvers,
+        manyToManyResolvers
+    );
 };

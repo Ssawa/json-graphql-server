@@ -40,8 +40,8 @@ export const getTypeFromKey = key => camelize(singularize(key));
  * @param {String} fieldName 'user_id'
  * @return {String} 'users'
  */
-export const getRelatedKey = fieldName =>
-    pluralize(fieldName.substr(0, fieldName.length - 3));
+export const getRelatedKey = (fieldName, plural = false) =>
+    pluralize(fieldName.substr(0, fieldName.length - plural ? 4 : 3));
 
 /**
  * 

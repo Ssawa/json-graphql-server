@@ -14,7 +14,11 @@ import { pluralize, camelize } from 'inflection';
 
 import getTypesFromData from './getTypesFromData';
 import getFilterTypesFromData from './getFilterTypesFromData';
-import { isRelationshipField, getRelationshipInfo } from '../relationships';
+import {
+    isRelationshipField,
+    isManyToManyRelationshipField,
+    getRelationshipInfo,
+} from '../relationships';
 import { getTypeFromKey } from '../nameConverter';
 
 /**
@@ -184,7 +188,7 @@ export default (data, { relationships } = {}) => {
      *     extend type Post { User: User }
      *     extend type User { Posts: [Post] }
      */
-    const schemaExtension = Object.values(typesByName).reduce((ext, type) => {
+    let schemaExtension = Object.values(typesByName).reduce((ext, type) => {
         Object.keys(type.getFields())
             .filter(isRelationshipField)
             .map(fieldName => {
@@ -200,6 +204,34 @@ extend type ${relationship.type} { ${relationship.foreignField}(filter: ${filter
             });
         return ext;
     }, '');
+
+    /**
+     * extend schema to add many-to-many relationship fields
+     * 
+     * @example
+     * If the `post` key contains a 'user_ids' field, then
+     * add many-to-many type extensions:
+     *     extend type Post { Users: [User] }
+     *     extend type User { Posts: [Post] }
+     */
+    schemaExtension = Object.values(typesByName).reduce((ext, type) => {
+        Object.keys(type.getFields())
+            .filter(isManyToManyRelationshipField)
+            .map(fieldName => {
+                const relationship = getRelationshipInfo(
+                    typeToKey[type],
+                    fieldName,
+                    relationships,
+                    true
+                );
+                const filter = filterTypesByName[type.name];
+                const relFilter = filterTypesByName[relationship.type];
+                ext += `
+extend type ${type} { ${relationship.field}(filter: ${relFilter}): [${relationship.type}] }
+extend type ${relationship.type} { ${relationship.foreignField}(filter: ${filter.name}): [${type}] }`;
+            });
+        return ext;
+    }, schemaExtension);
 
     return schemaExtension
         ? extendSchema(schema, parse(schemaExtension))

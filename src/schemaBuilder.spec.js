@@ -213,3 +213,164 @@ test('Allows manually configuring relationships', async () => {
         },
     });
 });
+
+const manyToManyData = {
+    posts: [
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+            fan_ids: [123],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+            fan_ids: [123, 456],
+        },
+    ],
+    users: [
+        {
+            id: 123,
+            name: 'John Doe',
+        },
+        {
+            id: 456,
+            name: 'Jane Doe',
+        },
+    ],
+};
+
+const manyToManyConfig = {
+    relationships: {
+        posts: {
+            fan_ids: {
+                ref: 'users',
+                field: 'Fans',
+                foreignField: 'Favorited',
+            },
+        },
+    },
+};
+
+const manyToManySchema = schemaBuilder(manyToManyData, manyToManyConfig);
+
+test('many to many relationships get created', () =>
+    graphql(
+        manyToManySchema,
+        '{ Post(id: 1) { Users { name } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                Post: {
+                    Users: [{ name: 'John Doe' }, { name: 'Jane Doe' }],
+                },
+            },
+        })
+    ));
+
+test('can filter many to many relationships fields', () =>
+    graphql(
+        manyToManySchema,
+        '{ Post(id: 1) { Users(filter: { q: "Jane" }) { name } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                Post: {
+                    Users: [{ name: 'Jane Doe' }],
+                },
+            },
+        })
+    ));
+
+test('many to many relationships get created in the other direction', () =>
+    graphql(
+        manyToManySchema,
+        '{ User(id: 456) { Posts { title } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                User: {
+                    Posts: [
+                        { title: 'Lorem Ipsum' },
+                        { title: 'Sic Dolor amet' },
+                    ],
+                },
+            },
+        })
+    ));
+
+test('can filter many to many relationships in the other direction', () =>
+    graphql(
+        manyToManySchema,
+        '{ User(id: 456) { Posts(filter: { q: "ipsum" }) { title } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                User: {
+                    Posts: [{ title: 'Lorem Ipsum' }],
+                },
+            },
+        })
+    ));
+
+test('configured many to many relationships get created', () =>
+    graphql(
+        manyToManySchema,
+        '{ Post(id: 2) { Fans { name } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                Post: {
+                    Fans: [{ name: 'John Doe' }, { name: 'Jane Doe' }],
+                },
+            },
+        })
+    ));
+
+test('can filter configured many to many relationships fields', () =>
+    graphql(
+        manyToManySchema,
+        '{ Post(id: 2) { Fans(filter: { q: "Jane" }) { name } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                Post: {
+                    Fans: [{ name: 'Jane Doe' }],
+                },
+            },
+        })
+    ));
+
+test('configured many to many relationships get created in the other direction', () =>
+    graphql(
+        manyToManySchema,
+        '{ User(id: 123) { Favorited { title } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                User: {
+                    Favorited: [
+                        { title: 'Lorem Ipsum' },
+                        { title: 'Sic Dolor amet' },
+                    ],
+                },
+            },
+        })
+    ));
+
+test('can filter configured many to many relationships in the other direction', () =>
+    graphql(
+        manyToManySchema,
+        '{ User(id: 123) { Favorited(filter: { q: "ipsum" }) { title } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                User: {
+                    Favorited: [{ title: 'Lorem Ipsum' }],
+                },
+            },
+        })
+    ));
