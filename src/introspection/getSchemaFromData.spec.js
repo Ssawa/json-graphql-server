@@ -123,6 +123,9 @@ test('creates one field per relationship', () => {
 test('creates one field per reverse relationship', () => {
     const typeMap = getSchemaFromData(data).getTypeMap();
     expect(Object.keys(typeMap['User'].getFields())).toContain('Posts');
+    const [arg] = typeMap['User'].getFields()['Posts'].args;
+    expect(arg.name).toEqual('filter');
+    expect(arg.type.name).toEqual('PostFilter');
 });
 
 test('creates three query fields per data type', () => {

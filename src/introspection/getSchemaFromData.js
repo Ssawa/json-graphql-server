@@ -193,9 +193,10 @@ export default (data, { relationships } = {}) => {
                     fieldName,
                     relationships
                 );
+                const filter = filterTypesByName[type.name];
                 ext += `
 extend type ${type} { ${relationship.field}: ${relationship.type} }
-extend type ${relationship.type} { ${relationship.foreignField}: [${type}] }`;
+extend type ${relationship.type} { ${relationship.foreignField}(filter: ${filter.name}): [${type}] }`;
             });
         return ext;
     }, '');

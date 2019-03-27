@@ -4,6 +4,7 @@ import {
     getReverseRelatedField,
 } from '../../nameConverter';
 import { isRelationshipField, getRelationshipInfo } from '../../relationships';
+import applyFilters from '../Query/applyFilters';
 
 /**
  * Add resolvers for relationship fields
@@ -67,8 +68,14 @@ export default (entityName, data, relationships = {}) => {
             });
         }, {});
 
-    const makeOneToManyResolver = (key, fieldName) => entity =>
-        data[key].filter(record => record[fieldName] == entity.id);
+    const makeOneToManyResolver = (key, fieldName) => (
+        entity,
+        { filter } = {}
+    ) =>
+        applyFilters(
+            data[key].filter(record => record[fieldName] == entity.id),
+            filter
+        );
 
     // Generate oneToMany resolvers based on field name
     const relatedField = getReverseRelatedField(entityName); // 'posts' => 'post_id'

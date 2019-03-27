@@ -118,6 +118,19 @@ test('entity route get one to many relationships fields', () =>
             },
         })
     ));
+test('can filter one to many relationships fields', () =>
+    graphql(
+        schema,
+        '{ Post(id: 1) { Comments(filter: { q: "adipiscing" }) { body } } }'
+    ).then(result =>
+        expect(result).toEqual({
+            data: {
+                Post: {
+                    Comments: [{ body: 'Consectetur adipiscing elit' }],
+                },
+            },
+        })
+    ));
 test('returns an error when asked for a non existent field', () =>
     graphql(schema, '{ Post(id: 1) { foo } }').then(result =>
         expect(result).toEqual({

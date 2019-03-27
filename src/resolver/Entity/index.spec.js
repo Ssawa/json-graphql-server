@@ -59,6 +59,13 @@ test('provides one to many relationship reolvers', () => {
     ]);
 });
 
+test('allows filtering one to many relationships', () => {
+    const { Comments } = entity('posts', data);
+    expect(Comments(data.posts[0], { filter: { q: 'adipiscing' } })).toEqual([
+        { id: 987, post_id: 1, body: 'Consectetur adipiscing elit' },
+    ]);
+});
+
 test('supports specifying relationship info', () => {
     const overrideData = {
         posts: [
