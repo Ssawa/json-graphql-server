@@ -126,3 +126,77 @@ test('returns an error when asked for a non existent field', () =>
             ],
         })
     ));
+
+test('Allows manually configuring relationships', async () => {
+    const schema = schemaBuilder(
+        {
+            posts: [
+                {
+                    id: 1,
+                    title: 'Lorem Ipsum',
+                    views: 254,
+                    author_id: 123,
+                },
+                {
+                    id: 2,
+                    title: 'Sic Dolor amet',
+                    views: 65,
+                    author_id: 456,
+                },
+                {
+                    id: 3,
+                    title: 'Sunt in culpa qui officia',
+                    views: 23,
+                    author_id: 123,
+                },
+            ],
+            users: [
+                {
+                    id: 123,
+                    name: 'John Doe',
+                },
+                {
+                    id: 456,
+                    name: 'Jane Doe',
+                },
+            ],
+        },
+        {
+            relationships: {
+                posts: {
+                    author_id: {
+                        ref: 'users',
+                        field: 'Author',
+                        foreignField: 'AuthoredPosts',
+                    },
+                },
+            },
+        }
+    );
+
+    let result = await graphql(schema, '{ Post(id: 1) { Author { name } } }');
+    expect(result).toEqual({
+        data: {
+            Post: {
+                Author: {
+                    name: 'John Doe',
+                },
+            },
+        },
+    });
+
+    result = await graphql(
+        schema,
+        '{ User(id: 123) { AuthoredPosts { title, views } } }'
+    );
+    expect(result).toEqual({
+        data: {
+            User: {
+                AuthoredPosts: [
+                    { title: 'Lorem Ipsum', views: 254 },
+                    { title: 'Sunt in culpa qui officia', views: 23 },
+                ],
+            },
+        },
+    });
+});
