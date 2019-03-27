@@ -2,6 +2,144 @@
 
 Get a full fake GraphQL API with zero coding in less than 30 seconds.
 
+## Fork Info
+
+This is a fork of [json-graphql-server](https://github.com/marmelab/json-graphql-server) with three new additions:
+
+### Configuring Relationships
+Relationships using atypical naming can now be defined in a `config` object passed into the main function. This allows for defining relationships that don't follow the strict `${type}_id` format.
+
+You can now have something like this:
+```js
+import { jsonGraphqlExpress } from 'json-graphql-server';
+
+const data = {
+   "posts": [
+       {
+           "id": 1,
+           "title": "Lorem Ipsum",
+           "views": 254,
+           "author_id": 123,
+       },
+       {
+           "id": 2,
+           "title": "Sic Dolor amet",
+           "views": 65,
+           "author_id": 456,
+       },
+   ],
+   "users": [
+       {
+           "id": 123,
+           "name": "John Doe"
+       },
+       {
+           "id": 456,
+           "name": "Jane Doe"
+       }
+   ],
+};
+
+jsonGraphqlExpress(data, {
+    relationships: {
+         posts: {
+             author_id: {
+                 ref: 'users',
+                 field: 'Author',
+                 foreignField: 'AuthoredPosts'
+             }
+         }
+     }
+});
+```
+
+Which will generate type definitions like:
+
+```graphql
+type Post {
+    id: ID!
+    title: String!
+    views: Int!
+    author_id: ID!
+    Author: User
+}
+
+type User {
+    id: ID!
+    name: String!
+    AuthoredPosts: [Post]
+}
+```
+
+### Filter Nested References
+List of references are now defined as:
+
+```graphql
+type User {
+    id: ID!
+    name: String!
+    Posts(filter: PostFilter): [Post]
+}
+```
+
+and resolvers have been updated so that the passed in args will further filter the relations.
+
+### Many to Many Relationships
+Many to Many relationships are now supported without the need for an intermediary. These are defined similar to many-to-one relationships, with the use of the `_ids` suffix for fields and an array of ids.
+
+For example:
+
+```js
+const data = {
+    posts: [
+        {
+            id: 1,
+            title: 'Lorem Ipsum',
+            views: 254,
+            user_ids: [123, 456],
+        },
+        {
+            id: 2,
+            title: 'Sic Dolor amet',
+            views: 65,
+            user_ids: [456],
+        },
+    ],
+    users: [
+        {
+            id: 123,
+            name: 'John Doe',
+        },
+        {
+            id: 456,
+            name: 'Jane Doe',
+        },
+    ],
+};
+
+jsonGraphqlExpress(data);
+```
+
+Which yields a type definition of the format:
+
+```graphql
+type Post {
+    id: ID!
+    title: String!
+    views: Int!
+    user_ids: List[ID]!
+    Users: [User]
+}
+
+type User {
+    id: ID!
+    name: String!
+    Posts: [Post]
+}
+```
+
+The aforementioned [relationship config](#configuring-relationships) and [field filtering](#filter-nested-references) work for these many-to-many relationships as well.
+
 ## Motivation
 
 > I'd love to learn GraphQL, but it seems that I first have to read a book about GraphQL Types and Queries, then install a gazillion npm packages.
