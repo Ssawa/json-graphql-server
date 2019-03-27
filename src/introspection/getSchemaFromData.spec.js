@@ -292,3 +292,55 @@ test('pluralizes and capitalizes correctly', () => {
     expect(types).toHaveProperty('Foot');
     expect(types).toHaveProperty('Category');
 });
+
+test('Allows setting relationship overrides', () => {
+    const typeMap = getSchemaFromData(
+        {
+            posts: [
+                {
+                    id: 1,
+                    title: 'Lorem Ipsum',
+                    views: 254,
+                    author_id: 123,
+                },
+                {
+                    id: 2,
+                    title: 'Sic Dolor amet',
+                    views: 65,
+                    author_id: 456,
+                },
+            ],
+            users: [
+                {
+                    id: 123,
+                    name: 'John Doe',
+                },
+                {
+                    id: 456,
+                    name: 'Jane Doe',
+                },
+            ],
+        },
+        {
+            relationships: {
+                posts: {
+                    author_id: {
+                        ref: 'users',
+                        field: 'Author',
+                        foreignField: 'AuthoredPosts',
+                    },
+                },
+            },
+        }
+    ).getTypeMap();
+    expect(Object.keys(typeMap['Post'].getFields())).not.toContain('User');
+    expect(Object.keys(typeMap['User'].getFields())).not.toContain('Posts');
+
+    expect(Object.keys(typeMap['Post'].getFields())).toContain('Author');
+    expect(typeMap['Post'].getFields()['Author'].type.name).toEqual('User');
+
+    expect(Object.keys(typeMap['User'].getFields())).toContain('AuthoredPosts');
+    expect(
+        typeMap['User'].getFields()['AuthoredPosts'].type.ofType.name
+    ).toEqual('Post');
+});

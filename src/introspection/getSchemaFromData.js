@@ -14,8 +14,8 @@ import { pluralize, camelize } from 'inflection';
 
 import getTypesFromData from './getTypesFromData';
 import getFilterTypesFromData from './getFilterTypesFromData';
-import { isRelationshipField } from '../relationships';
-import { getRelatedType } from '../nameConverter';
+import { isRelationshipField, getRelationshipInfo } from '../relationships';
+import { getTypeFromKey } from '../nameConverter';
 
 /**
  * Get a GraphQL schema from data
@@ -76,12 +76,25 @@ import { getRelatedType } from '../nameConverter';
  * //     removeUser(id: ID!): Boolean
  * // }
  */
-export default data => {
+export default (data, { relationships } = {}) => {
     const types = getTypesFromData(data);
     const typesByName = types.reduce((types, type) => {
         types[type.name] = type;
         return types;
     }, {});
+
+    // Going from Type => Key is a bit trickier than
+    // going from Key => Type because we don't enforce
+    // any kind of casing rules on the keys. Therefore
+    // generating a mapping of Types => Key is the safest
+    // way of converting a type back to a key. (There's
+    // a potential for a name collision here but if that
+    // were to happen there would be a host of other issues)
+    const typeToKey = Object.keys(data).reduce(
+        (mapping, key) =>
+            Object.assign({}, mapping, { [getTypeFromKey(key)]: key }),
+        {}
+    );
 
     const filterTypesByName = getFilterTypesFromData(data);
 
@@ -175,11 +188,14 @@ export default data => {
         Object.keys(type.getFields())
             .filter(isRelationshipField)
             .map(fieldName => {
-                const relType = getRelatedType(fieldName);
-                const rel = pluralize(type.toString());
+                const relationship = getRelationshipInfo(
+                    typeToKey[type],
+                    fieldName,
+                    relationships
+                );
                 ext += `
-extend type ${type} { ${relType}: ${relType} }
-extend type ${relType} { ${rel}: [${type}] }`;
+extend type ${type} { ${relationship.field}: ${relationship.type} }
+extend type ${relationship.type} { ${relationship.foreignField}: [${type}] }`;
             });
         return ext;
     }, '');

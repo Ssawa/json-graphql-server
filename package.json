@@ -4,8 +4,16 @@
     "main": "lib/json-graphql-server.node.min.js",
     "browser": "lib/json-graphql-server.client.min.js",
     "repository": "git@github.com:marmelab/json-graphql-server.git",
-    "authors": ["François Zaninotto", "Gildas Garcia"],
-    "files": ["*.md", "lib", "src", "bin"],
+    "authors": [
+        "François Zaninotto",
+        "Gildas Garcia"
+    ],
+    "files": [
+        "*.md",
+        "lib",
+        "src",
+        "bin"
+    ],
     "license": "MIT",
     "scripts": {
         "format": "make format",
@@ -16,7 +24,10 @@
         "prepublish": "make build"
     },
     "lint-staged": {
-        "src/**/*.js": ["eslint --fix", "git add"]
+        "src/**/*.js": [
+            "eslint --fix",
+            "git add"
+        ]
     },
     "devDependencies": {
         "@types/jest": "~19.2.4",
@@ -53,6 +64,7 @@
         "graphql-tools": "~1.1.0",
         "graphql-type-json": "~0.1.4",
         "inflection": "~1.12.0",
+        "lodash.get": "^4.4.2",
         "lodash.merge": "~4.6.0",
         "reify": "~0.18.1",
         "xhr-mock": "^2.0.3"
